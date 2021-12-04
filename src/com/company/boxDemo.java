@@ -167,8 +167,18 @@ public class boxDemo extends JFrame {
         panel1_control_box2.add(jb_redraw);
         panel1_control_box2.setBackground(Color.PINK);
 
-        jb_import_ori.addActionListener(new btnImportListener("Select primary video", boxDemo.this, true));
-        jb_import_sec.addActionListener(new btnImportListener("Select secondary video", boxDemo.this, false));
+        jb_import_ori.addActionListener(new FileSelector("Select primary video", boxDemo.this) {
+            @Override
+            void onFileSelected(String path) {
+                loadPrimaryVideo(path);
+            }
+        });
+        jb_import_sec.addActionListener(new FileSelector("Select secondary video", boxDemo.this) {
+            @Override
+            void onFileSelected(String path) {
+                loadSecondaryVideo(path);
+            }
+        });
         jb_redraw.addActionListener(new ActionListener(){
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -271,30 +281,6 @@ public class boxDemo extends JFrame {
     private class btnNextListener implements ActionListener {
         public void actionPerformed(ActionEvent e) {
             slider_p1.forward();
-        }
-    }
-
-    private class btnImportListener implements ActionListener {
-
-        private final String title;
-        private final Component parent;
-        private final boolean isPrimary;
-
-        btnImportListener(String title, Component parent, boolean isPrimary) {
-            this.title = title;
-            this.parent = parent;
-            this.isPrimary = isPrimary;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            fileChooser.setDialogTitle(title);
-            if (JFileChooser.APPROVE_OPTION == fileChooser.showOpenDialog(parent)) {
-                if (isPrimary) loadPrimaryVideo(fileChooser.getSelectedFile().getPath());
-                else loadSecondaryVideo(fileChooser.getSelectedFile().getPath());
-            }
         }
     }
 
