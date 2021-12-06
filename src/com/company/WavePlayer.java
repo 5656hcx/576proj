@@ -18,35 +18,9 @@ public class WavePlayer extends AbstractPlayer implements Runnable {
     }
 
     public void load(String filename) {
-        isReloaded = true;
         ImageReader reader = ImageReader.getInstance();
         inputStream = reader.BWavFromFile(filename);
-
-        try {
-            audioInputStream = AudioSystem.getAudioInputStream(inputStream);
-            if (dataLine != null) {
-                dataLine.flush();
-            }
-            else {
-                AudioFormat audioFormat = audioInputStream.getFormat();
-                DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioFormat);
-                dataLine = (SourceDataLine) AudioSystem.getLine(info);
-                dataLine.open(audioFormat, EXTERNAL_BUFFER_SIZE);
-            }
-        }
-        catch (LineUnavailableException | UnsupportedAudioFileException | IOException e) {
-            e.printStackTrace();
-            currentState = State.Stopped;
-            return;
-        }
-
-        if (currentState != State.Paused) {
-            currentState = State.Paused;
-        }
-        if (playbackThread == null) {
-            playbackThread = new Thread(this);
-            playbackThread.start();
-        }
+        reset();
     }
 
     @Override
@@ -62,11 +36,17 @@ public class WavePlayer extends AbstractPlayer implements Runnable {
                         synchronized (this) {
                             if (currentState == State.Paused) {
                                 notifyStateChanged();
+                                System.out.println("Audio Playback Thread : waiting");
                                 this.wait();
+                                System.out.println("Audio Playback Thread : awaking");
                                 dataLine.start();
                                 currentState = State.Playing;
                                 notifyStateChanged();
                             }
+                        }
+                        if (isReloaded) {
+                            isReloaded = false;
+                            break;
                         }
                         writeBytes += dataLine.write(audioBuffer, writeBytes, EXTERNAL_BUFFER_SIZE - writeBytes);
                     }
@@ -107,6 +87,32 @@ public class WavePlayer extends AbstractPlayer implements Runnable {
 
     @Override
     void reset() {
+        isReloaded = true;
+        try {
+            audioInputStream = AudioSystem.getAudioInputStream(inputStream);
+            if (dataLine != null) {
+                dataLine.stop();
+                dataLine.flush();
+            }
+            else {
+                AudioFormat audioFormat = audioInputStream.getFormat();
+                DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioFormat);
+                dataLine = (SourceDataLine) AudioSystem.getLine(info);
+                dataLine.open(audioFormat, EXTERNAL_BUFFER_SIZE);
+            }
+        }
+        catch (LineUnavailableException | UnsupportedAudioFileException | IOException e) {
+            e.printStackTrace();
+            currentState = State.Stopped;
+            return;
+        }
 
+        if (currentState != State.Paused) {
+            currentState = State.Paused;
+        }
+        if (playbackThread == null) {
+            playbackThread = new Thread(this);
+            playbackThread.start();
+        }
     }
 }
