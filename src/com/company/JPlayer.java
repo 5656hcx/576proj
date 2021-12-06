@@ -4,26 +4,37 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class JPlayer extends JPanel {
+interface onPlaybackStateChangeListener {
+    void onPlaybackStateChange(AbstractPlayer.State state);
+}
+
+public class JPlayer extends JPanel implements onPlaybackStateChangeListener {
 
     private final JButton button_play;
     private final JLabel video;
     private final Slider slider;
 
-    private boolean isLoaded;
     private ArrayList<File> videoFrames;
-    private WavePlayer wavePlayer;
-    private VideoPlayer videoPlayer;
+    private final WavePlayer wavePlayer;
+    private final VideoPlayer videoPlayer;
 
     public JPlayer() {
         setLayout(new BorderLayout());
 
+        wavePlayer = new WavePlayer();
+        videoPlayer = new VideoPlayer();
+        videoPlayer.setPlaybackStateChange(this);
+
         video = new JLabel("\\(^o^)/", JLabel.CENTER);
         video.setAlignmentX(CENTER_ALIGNMENT);
         add(video, BorderLayout.CENTER);
+
+        JLabel status = new JLabel("Playlist is empty", JLabel.CENTER);
+        slider = new Slider(status, "Now playing the %dth frame", videoFrames);
+        slider.setCanvas(video);
 
         JButton button_load = new JButton("load");
         button_load.addActionListener(new FileSelector("Select video directory...", JPlayer.this) {
@@ -32,22 +43,30 @@ public class JPlayer extends JPanel {
                 ImageReader reader = ImageReader.getInstance();
                 videoFrames = reader.FolderConfig(path);
                 if (!videoFrames.isEmpty()) {
-                    slider.reset(videoFrames);
                     video.setText(null);
                     video.setIcon(new ImageIcon(reader.BImgFromFile(videoFrames.get(0))));
+                    videoPlayer.reset();
+                    slider.reset(videoFrames);
                 }
             }
         });
 
         button_play = new JButton("play");
         button_play.addActionListener(e -> {
-            Thread thread = new Thread(new VideoPlayer());
-            thread.start();
+            switch (videoPlayer.currentState) {
+                case Stopped -> {
+                    // for now do nothing here
+                }
+                case Paused -> {
+                    // tell playback thread to resume
+                    videoPlayer.play();
+                }
+                case Playing -> {
+                    // tell playback thread to pause
+                    videoPlayer.pause();
+                }
+            }
         });
-
-        JLabel status = new JLabel("Playlist is empty", JLabel.CENTER);
-        slider = new Slider(status, "Now playing the %dth frame", videoFrames);
-        slider.setCanvas(video);
 
         JPanel buttons = new JPanel(new GridLayout(1, 2));
         buttons.add(button_load);
@@ -59,28 +78,75 @@ public class JPlayer extends JPanel {
         widget.add(buttons);
 
         add(widget, BorderLayout.SOUTH);
+    }
 
-        wavePlayer = new WavePlayer();
-        videoPlayer = new VideoPlayer();
+    @Override
+    public void onPlaybackStateChange(AbstractPlayer.State state) {
+        switch (state) {
+            case Paused -> {
+                button_play.setText("resume");
+                System.out.println("Video Playback has paused");
+            }
+            case Playing -> {
+                button_play.setText("pause");
+                System.out.println("Video Playback has resumed");
+            }
+            case Stopped -> {
+                button_play.setText("replay");
+                System.out.println("Video Playback has ended");
+            }
+        }
     }
 
     private class VideoPlayer implements Runnable, AbstractPlayer {
+        final Queue<Integer> messageQueue = new ConcurrentLinkedQueue<>();
+        onPlaybackStateChangeListener listener;
 
-        State currentState;
-        Queue<Integer> messageQueue = new LinkedList<Integer>();
+        volatile State currentState;
+        Thread playbackThread;
 
         public VideoPlayer() {
             currentState = State.Stopped;
         }
 
+        void setPlaybackStateChange(onPlaybackStateChangeListener observer) {
+            this.listener = observer;
+        }
+
+        void notifyStateChanged() {
+            if (listener != null) {
+                listener.onPlaybackStateChange(currentState);
+            }
+        }
+
+        public void reset() {
+            messageQueue.clear();
+            if (playbackThread == null) {
+                playbackThread = new Thread(this);
+                playbackThread.start();
+            }
+            if (currentState != State.Paused) {
+                currentState = State.Paused;
+                notifyStateChanged();
+            }
+        }
+
         @Override
         public void play() {
-            messageQueue.offer(1);
+            if (currentState != State.Playing) {
+                currentState = State.Playing;
+                messageQueue.offer(1);
+                notifyStateChanged();
+            }
         }
 
         @Override
         public void pause() {
-            messageQueue.offer(0);
+            if (currentState != State.Paused) {
+                currentState = State.Paused;
+                messageQueue.clear();
+                notifyStateChanged();
+            }
         }
 
         @Override
@@ -90,23 +156,35 @@ public class JPlayer extends JPanel {
 
         @Override
         public void run() {
-            messageQueue.offer(1);
-            while (!messageQueue.isEmpty()) {
-                Integer message = messageQueue.poll();
-                if (message == 1) {
-                    slider.forward();
-                    if (slider.getValue() < slider.getMaximum()) {
-                        messageQueue.offer(1);
-                        try {
-                            synchronized (this) {
-                                wait(16);   // hard-coded approximate 60fps
+            // for now the thread never quit, since it
+            // won't reach Stopped state after execution
+            // to DEBUG, call stop() to exit the thread
+            while (currentState != State.Stopped) {
+                if (!messageQueue.isEmpty()) {
+                    Integer message = messageQueue.poll();
+                    if (message == 1) {
+                        slider.forward();
+                        if (slider.getValue() < slider.getMaximum()) {
+                            if (currentState == State.Playing) {
+                                messageQueue.offer(1);
+                                try {
+                                    synchronized (this) {
+                                        wait(16);   // hard-coded approximate 60fps
+                                    }
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
                             }
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
+                        }
+                        else {
+                            currentState = State.Paused;
+                            notifyStateChanged();
                         }
                     }
                 }
             }
+
+            System.out.println("Video Playback Thread : exits");
         }
     }
 
