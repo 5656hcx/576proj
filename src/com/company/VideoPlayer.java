@@ -14,21 +14,17 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
         currentState = State.Stopped;
     }
 
-    void notifyStateChanged() {
-        if (listener != null) {
-            listener.onPlaybackStateChange(currentState);
-        }
-    }
-
     public void reset() {
-        messageQueue.clear();
-        if (playbackThread == null) {
-            playbackThread = new Thread(this);
-            playbackThread.start();
+        synchronized (messageQueue) {
+            messageQueue.clear();
         }
         if (currentState != State.Paused) {
             currentState = State.Paused;
             notifyStateChanged();
+        }
+        if (playbackThread == null) {
+            playbackThread = new Thread(this);
+            playbackThread.start();
         }
     }
 
@@ -37,7 +33,7 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
         if (currentState != State.Playing) {
             currentState = State.Playing;
             synchronized (messageQueue) {
-                messageQueue.offer(16);
+                messageQueue.offer(16);     // hard-coded approximately 60fps
                 messageQueue.notify();
             }
             notifyStateChanged();
@@ -69,13 +65,13 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
             synchronized (messageQueue) {
                 if (!messageQueue.isEmpty()) {
                     // message is the waiting time for next frame
-                    Integer message = messageQueue.poll();
+                    int framePeriod = messageQueue.poll();
                     frameManager.forward();
                     if (frameManager.getValue() < frameManager.getMaximum()) {
                         if (currentState == State.Playing) {
-                            messageQueue.offer(message);
+                            messageQueue.offer(framePeriod);
                             try {
-                                messageQueue.wait(message);   // hard-coded approximate 60fps
+                                messageQueue.wait(framePeriod);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
@@ -85,10 +81,10 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
                         notifyStateChanged();
                     }
                 } else {
-                    System.out.println("Video Playback Thread : waiting");
+                    // System.out.println("Video Playback Thread : waiting");
                     try {
                         messageQueue.wait();
-                        System.out.println("Video Playback Thread : awaking");
+                        // System.out.println("Video Playback Thread : awaking");
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -96,6 +92,6 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
             }
         }
 
-        System.out.println("Video Playback Thread : exits");
+        // System.out.println("Video Playback Thread : exits");
     }
 }

@@ -86,4 +86,30 @@ public class ImageReader {
             return null;
         }
     }
+
+    public BufferedInputStream BWavFromFile(String filename) {
+        File file = new File(filename);
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            if (files == null || files.length == 0) {
+                return null;
+            }
+            for (File f : files) {
+                if (f.getName().endsWith(".wav")) {
+                    filename = f.getAbsolutePath();
+                    file = new File(filename);
+                    break;
+                }
+            }
+        }
+        if (file.isFile()) {
+            try {
+                InputStream inputStream = new FileInputStream(filename);
+                return new BufferedInputStream(inputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
 }

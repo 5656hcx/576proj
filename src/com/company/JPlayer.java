@@ -12,7 +12,7 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
     private final Slider slider;
 
     private ArrayList<File> videoFrames;
-    private final WavePlayer wavePlayer;
+    private final WavePlayer audioPlayer;
     private final AbstractPlayer videoPlayer;
 
     public JPlayer() {
@@ -26,7 +26,8 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
         slider = new Slider(status, "Now playing the %dth frame", videoFrames);
         slider.setCanvas(video);
 
-        wavePlayer = new WavePlayer();
+        audioPlayer = new WavePlayer();
+        audioPlayer.setPlaybackStateChange(this);
         videoPlayer = new VideoPlayer(slider);
         videoPlayer.setPlaybackStateChange(this);
 
@@ -37,6 +38,7 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
                 ImageReader reader = ImageReader.getInstance();
                 videoFrames = reader.FolderConfig(path);
                 if (!videoFrames.isEmpty()) {
+                    audioPlayer.load(path);
                     video.setText(null);
                     video.setIcon(new ImageIcon(reader.BImgFromFile(videoFrames.get(0))));
                     videoPlayer.reset();
@@ -49,12 +51,16 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
         button_play.addActionListener(e -> {
             // for now, do nothing in Stopped state
             switch (videoPlayer.currentState) {
-                case Paused ->
+                case Paused -> {
                     // tell playback thread to resume
+                    audioPlayer.play();
                     videoPlayer.play();
-                case Playing ->
+                }
+                case Playing -> {
                     // tell playback thread to pause
+                    audioPlayer.pause();
                     videoPlayer.pause();
+                }
             }
         });
 
@@ -74,7 +80,7 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
     public void onPlaybackStateChange(AbstractPlayer.State state) {
         switch (state) {
             case Paused ->
-                button_play.setText("resume");
+                button_play.setText("play");
                 // System.out.println("Video Playback has paused");
             case Playing ->
                 button_play.setText("pause");

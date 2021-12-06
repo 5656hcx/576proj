@@ -16,6 +16,12 @@ public abstract class AbstractPlayer {
         this.listener = listener;
     }
 
+    final void notifyStateChanged() {
+        if (listener != null) {
+            listener.onPlaybackStateChange(currentState);
+        }
+    }
+
     public interface PlaybackStateChangeListener {
         void onPlaybackStateChange(AbstractPlayer.State state);
     }
