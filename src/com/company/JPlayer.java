@@ -53,18 +53,14 @@ public class JPlayer extends JPanel implements onPlaybackStateChangeListener {
 
         button_play = new JButton("play");
         button_play.addActionListener(e -> {
+            // for now, do nothing in Stopped state
             switch (videoPlayer.currentState) {
-                case Stopped -> {
-                    // for now do nothing here
-                }
-                case Paused -> {
+                case Paused ->
                     // tell playback thread to resume
                     videoPlayer.play();
-                }
-                case Playing -> {
+                case Playing ->
                     // tell playback thread to pause
                     videoPlayer.pause();
-                }
             }
         });
 
@@ -83,18 +79,12 @@ public class JPlayer extends JPanel implements onPlaybackStateChangeListener {
     @Override
     public void onPlaybackStateChange(AbstractPlayer.State state) {
         switch (state) {
-            case Paused -> {
+            case Paused ->
                 button_play.setText("resume");
-                System.out.println("Video Playback has paused");
-            }
-            case Playing -> {
+                // System.out.println("Video Playback has paused");
+            case Playing ->
                 button_play.setText("pause");
-                System.out.println("Video Playback has resumed");
-            }
-            case Stopped -> {
-                button_play.setText("replay");
-                System.out.println("Video Playback has ended");
-            }
+                // System.out.println("Video Playback has resumed");
         }
     }
 
@@ -136,6 +126,9 @@ public class JPlayer extends JPanel implements onPlaybackStateChangeListener {
             if (currentState != State.Playing) {
                 currentState = State.Playing;
                 messageQueue.offer(1);
+                synchronized (this) {
+                    notify();
+                }
                 notifyStateChanged();
             }
         }
@@ -180,6 +173,17 @@ public class JPlayer extends JPanel implements onPlaybackStateChangeListener {
                             currentState = State.Paused;
                             notifyStateChanged();
                         }
+                    }
+                }
+                else {
+                    System.out.println("Video Playback Thread : waiting");
+                    try {
+                        synchronized (this) {
+                            wait();
+                            System.out.println("Video Playback Thread : awaking");
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
                 }
             }
