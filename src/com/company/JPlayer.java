@@ -4,14 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
-interface onPlaybackStateChangeListener {
-    void onPlaybackStateChange(AbstractPlayer.State state);
-}
-
-public class JPlayer extends JPanel implements onPlaybackStateChangeListener {
+public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChangeListener {
 
     private final JButton button_play;
     private final JLabel video;
@@ -19,14 +13,10 @@ public class JPlayer extends JPanel implements onPlaybackStateChangeListener {
 
     private ArrayList<File> videoFrames;
     private final WavePlayer wavePlayer;
-    private final VideoPlayer videoPlayer;
+    private final AbstractPlayer videoPlayer;
 
     public JPlayer() {
         setLayout(new BorderLayout());
-
-        wavePlayer = new WavePlayer();
-        videoPlayer = new VideoPlayer();
-        videoPlayer.setPlaybackStateChange(this);
 
         video = new JLabel("\\(^o^)/", JLabel.CENTER);
         video.setAlignmentX(CENTER_ALIGNMENT);
@@ -35,6 +25,10 @@ public class JPlayer extends JPanel implements onPlaybackStateChangeListener {
         JLabel status = new JLabel("Playlist is empty", JLabel.CENTER);
         slider = new Slider(status, "Now playing the %dth frame", videoFrames);
         slider.setCanvas(video);
+
+        wavePlayer = new WavePlayer();
+        videoPlayer = new VideoPlayer(slider);
+        videoPlayer.setPlaybackStateChange(this);
 
         JButton button_load = new JButton("load");
         button_load.addActionListener(new FileSelector("Select video directory...", JPlayer.this) {
@@ -85,110 +79,6 @@ public class JPlayer extends JPanel implements onPlaybackStateChangeListener {
             case Playing ->
                 button_play.setText("pause");
                 // System.out.println("Video Playback has resumed");
-        }
-    }
-
-    private class VideoPlayer implements Runnable, AbstractPlayer {
-        final Queue<Integer> messageQueue = new ConcurrentLinkedQueue<>();
-        onPlaybackStateChangeListener listener;
-
-        volatile State currentState;
-        Thread playbackThread;
-
-        public VideoPlayer() {
-            currentState = State.Stopped;
-        }
-
-        void setPlaybackStateChange(onPlaybackStateChangeListener observer) {
-            this.listener = observer;
-        }
-
-        void notifyStateChanged() {
-            if (listener != null) {
-                listener.onPlaybackStateChange(currentState);
-            }
-        }
-
-        public void reset() {
-            messageQueue.clear();
-            if (playbackThread == null) {
-                playbackThread = new Thread(this);
-                playbackThread.start();
-            }
-            if (currentState != State.Paused) {
-                currentState = State.Paused;
-                notifyStateChanged();
-            }
-        }
-
-        @Override
-        public void play() {
-            if (currentState != State.Playing) {
-                currentState = State.Playing;
-                messageQueue.offer(1);
-                synchronized (this) {
-                    notify();
-                }
-                notifyStateChanged();
-            }
-        }
-
-        @Override
-        public void pause() {
-            if (currentState != State.Paused) {
-                currentState = State.Paused;
-                messageQueue.clear();
-                notifyStateChanged();
-            }
-        }
-
-        @Override
-        public void stop() {
-
-        }
-
-        @Override
-        public void run() {
-            // for now the thread never quit, since it
-            // won't reach Stopped state after execution
-            // to DEBUG, call stop() to exit the thread
-            while (currentState != State.Stopped) {
-                if (!messageQueue.isEmpty()) {
-                    Integer message = messageQueue.poll();
-                    if (message == 1) {
-                        slider.forward();
-                        if (slider.getValue() < slider.getMaximum()) {
-                            if (currentState == State.Playing) {
-                                messageQueue.offer(1);
-                                try {
-                                    synchronized (this) {
-                                        wait(16);   // hard-coded approximate 60fps
-                                    }
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }
-                        else {
-                            currentState = State.Paused;
-                            notifyStateChanged();
-                        }
-                    }
-                }
-                else {
-                    System.out.println("Video Playback Thread : waiting");
-                    try {
-                        synchronized (this) {
-                            wait();
-                            System.out.println("Video Playback Thread : awaking");
-                        }
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-            System.out.println("Video Playback Thread : exits");
         }
     }
 
