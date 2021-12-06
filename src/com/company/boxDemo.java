@@ -146,8 +146,7 @@ public class boxDemo extends JFrame {
         video_ori = new drawDemo();
 
         JLabel status = new JLabel("Import a Video to Start!", JLabel.CENTER);
-        slider_p1 = new Slider(status, "Value of the slider is: %d", primary_video);
-        slider_p1.setCanvas(video_ori);
+        slider_p1 = new Slider(status, "Value of the slider is: %d");
 
         jb_prev.setFont(new Font("Dialog", Font.PLAIN, 20));
         jb_prev.addActionListener( new btnPrevListener());
@@ -237,8 +236,7 @@ public class boxDemo extends JFrame {
         video_sec.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel status2 = new JLabel("Import a Video to Start!", JLabel.CENTER);
-        slider_p3 = new Slider(status2, "Value of the slider is: %d", secondary_video);
-        slider_p3.setCanvas(video_sec);
+        slider_p3 = new Slider(status2, "Value of the slider is: %d");
 
         panel3_control_box.add(jb_prev_p3);
         panel3_control_box.add(slider_p3);

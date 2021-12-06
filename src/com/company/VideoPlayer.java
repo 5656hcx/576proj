@@ -1,17 +1,41 @@
 package com.company;
 
+import javax.swing.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 class VideoPlayer extends AbstractPlayer implements Runnable {
     private final Queue<Integer> messageQueue = new ConcurrentLinkedQueue<>();
     private final Slider frameManager;
+    private final JLabel videoCanvas;
+    private ArrayList<File> videoFrames;
 
     private Thread playbackThread;
 
-    public VideoPlayer(Slider slider) {
-        frameManager = slider;
+    public VideoPlayer(Slider slider, JLabel canvas) {
         currentState = State.Stopped;
+        videoCanvas = canvas;
+        frameManager = slider;
+        frameManager.addChangeListener(e -> {
+            if (canvas != null) {
+                BufferedImage newImage = ImageReader.getInstance().BImgFromFile(videoFrames.get(slider.getValue()));
+                canvas.setIcon(new ImageIcon(newImage));
+            }
+        });
+    }
+
+    public void addMessage(int frameDuration) {
+        synchronized (messageQueue) {
+            messageQueue.offer(frameDuration);
+        }
+    }
+
+    public void load(ArrayList<File> videoFrames) {
+        this.videoFrames = videoFrames;
+        frameManager.reset(videoFrames);
     }
 
     public void reset() {
@@ -65,13 +89,13 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
             synchronized (messageQueue) {
                 if (!messageQueue.isEmpty()) {
                     // message is the waiting time for next frame
-                    int framePeriod = messageQueue.poll();
+                    int frameDuration = messageQueue.poll();
                     frameManager.forward();
                     if (frameManager.getValue() < frameManager.getMaximum()) {
                         if (currentState == State.Playing) {
-                            messageQueue.offer(framePeriod);
+                            messageQueue.offer(frameDuration);
                             try {
-                                messageQueue.wait(framePeriod);
+                                messageQueue.wait(frameDuration);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
@@ -81,10 +105,10 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
                         notifyStateChanged();
                     }
                 } else {
-                    // System.out.println("Video Playback Thread : waiting");
+                    System.out.println("Video Playback Thread : waiting");
                     try {
                         messageQueue.wait();
-                        // System.out.println("Video Playback Thread : awaking");
+                        System.out.println("Video Playback Thread : awaking");
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -92,6 +116,6 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
             }
         }
 
-        // System.out.println("Video Playback Thread : exits");
+        System.out.println("Video Playback Thread : exits");
     }
 }

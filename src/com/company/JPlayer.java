@@ -13,7 +13,7 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
 
     private ArrayList<File> videoFrames;
     private final WavePlayer audioPlayer;
-    private final AbstractPlayer videoPlayer;
+    private final VideoPlayer videoPlayer;
 
     public JPlayer() {
         setLayout(new BorderLayout());
@@ -23,12 +23,11 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
         add(video, BorderLayout.CENTER);
 
         JLabel status = new JLabel("Playlist is empty", JLabel.CENTER);
-        slider = new Slider(status, "Now playing the %dth frame", videoFrames);
-        slider.setCanvas(video);
+        slider = new Slider(status, "Now playing the %dth frame");
 
         audioPlayer = new WavePlayer();
         audioPlayer.setPlaybackStateChange(this);
-        videoPlayer = new VideoPlayer(slider);
+        videoPlayer = new VideoPlayer(slider, video);
         videoPlayer.setPlaybackStateChange(this);
 
         JButton button_load = new JButton("load");
@@ -41,6 +40,7 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
                     audioPlayer.load(path);
                     video.setText(null);
                     video.setIcon(new ImageIcon(reader.BImgFromFile(videoFrames.get(0))));
+                    videoPlayer.load(videoFrames);
                     videoPlayer.reset();
                     slider.reset(videoFrames);
                 }
