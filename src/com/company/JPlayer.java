@@ -38,7 +38,7 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
                 videoFrames = reader.FolderConfig(path);
                 if (!videoFrames.isEmpty()) {
                     audioPlayer.open(path);
-                    audioPlayer.setVideoFrameCount(videoFrames.size());
+                    audioPlayer.setVideoFrameLength(videoFrames.size());
                     video.setText(null);
                     video.setIcon(new ImageIcon(reader.BImgFromFile(videoFrames.get(0))));
                     videoPlayer.open(videoFrames);

@@ -7,15 +7,20 @@ public class WavePlayer extends AbstractPlayer<String> {
     private BufferedInputStream inputStream;
     private Clip audioClip;
 
-    private int videoFrameCount = 1; // for DEBUG Only
+    private int frameOffsetMicros = 0;
 
     public WavePlayer(Slider slider) {
         slider.setManualChangeListener(() -> peek(slider.getValue()));
     }
 
-    @Deprecated
-    public void setVideoFrameCount(int frameCount) {
-        videoFrameCount = frameCount;
+    public void setVideoFrameLength(int frameLength) {
+        if (audioClip != null && frameLength > 0) {
+            System.out.println(audioClip.getMicrosecondLength());
+            frameOffsetMicros = (int) (audioClip.getMicrosecondLength() / frameLength);
+            while ((long) frameOffsetMicros * frameLength < audioClip.getMicrosecondLength()) {
+                frameOffsetMicros += 1;
+            }
+        }
     }
 
     public void open(String mediaSource) {
@@ -60,7 +65,8 @@ public class WavePlayer extends AbstractPlayer<String> {
 
     @Override
     void peek(long frameIndex) {
-        int offset = audioClip.getFrameLength() / videoFrameCount;
-        audioClip.setFramePosition(((int)frameIndex - 1) * offset);    // hard-coded approximately 30fps
+        if (audioClip != null) {
+            audioClip.setMicrosecondPosition(frameIndex * frameOffsetMicros);
+        }
     }
 }
