@@ -24,9 +24,10 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
         this.slider.addChangeListener(this);
     }
 
-    public void addMessage(int frameDuration) {
-        synchronized (messageQueue) {
-            messageQueue.offer(frameDuration);
+    private void setAndNotifyStateChanged(State newState) {
+        if (currentState != newState) {
+            currentState = newState;
+            notifyStateChanged();
         }
     }
 
@@ -41,14 +42,12 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
 
     }
 
+    @Override
     public void reset() {
         synchronized (messageQueue) {
             messageQueue.clear();
         }
-        if (currentState != State.Paused) {
-            currentState = State.Paused;
-            notifyStateChanged();
-        }
+        setAndNotifyStateChanged(State.Paused);
         if (playbackThread == null) {
             playbackThread = new Thread(this);
             playbackThread.start();
@@ -69,23 +68,21 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
     @Override
     public void play() {
         if (currentState != State.Playing) {
-            currentState = State.Playing;
+            setAndNotifyStateChanged(State.Playing);
             synchronized (messageQueue) {
-                messageQueue.offer(33);     // hard-coded approximately 30fps
+                messageQueue.offer(30);
                 messageQueue.notify();
             }
-            notifyStateChanged();
         }
     }
 
     @Override
     public void pause() {
         if (currentState != State.Paused) {
-            currentState = State.Paused;
+            setAndNotifyStateChanged(State.Paused);
             synchronized (messageQueue) {
                 messageQueue.clear();
             }
-            notifyStateChanged();
         }
     }
 
@@ -105,20 +102,18 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
                     // message is the waiting time for next frame
                     int frameDuration = messageQueue.poll();
                     if (slider.getValue() < slider.getMaximum()) {
-                        slider.forward();
-                        // peek(slider.getValue() + 1);
                         if (currentState == State.Playing) {
-                            messageQueue.offer(frameDuration);
+                            slider.forward();
                             try {
                                 messageQueue.wait(frameDuration);
+                                if (currentState == State.Playing) {
+                                    messageQueue.offer(frameDuration);
+                                }
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
                         }
-                    } else {
-                        currentState = State.Paused;
-                        notifyStateChanged();
-                    }
+                    } else setAndNotifyStateChanged(State.Paused);
                 } else {
                     System.out.println("Video Playback Thread : waiting");
                     try {

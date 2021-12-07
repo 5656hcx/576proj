@@ -15,7 +15,6 @@ public class WavePlayer extends AbstractPlayer<String> {
 
     public void setVideoFrameLength(int frameLength) {
         if (audioClip != null && frameLength > 0) {
-            System.out.println(audioClip.getMicrosecondLength());
             frameOffsetMicros = (int) (audioClip.getMicrosecondLength() / frameLength);
             while ((long) frameOffsetMicros * frameLength < audioClip.getMicrosecondLength()) {
                 frameOffsetMicros += 1;
