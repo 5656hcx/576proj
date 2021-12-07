@@ -1,12 +1,14 @@
 package com.company;
 
-public abstract class AbstractPlayer {
+public abstract class AbstractPlayer<T>  {
 
     PlaybackStateChangeListener listener;
     volatile State currentState;
 
     enum State { Playing, Paused, Stopped }
 
+    abstract void open(T mediaSource);      // Open a media file
+    abstract void close();  // Closed any resources
     abstract void play();   // Stopped -> Playing
     abstract void pause();  // Playing -> Paused
     abstract void stop();   //       * -> Stopped

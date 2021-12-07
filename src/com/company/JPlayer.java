@@ -41,7 +41,7 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
                     audioPlayer.setVideoFrameCount(videoFrames.size());
                     video.setText(null);
                     video.setIcon(new ImageIcon(reader.BImgFromFile(videoFrames.get(0))));
-                    videoPlayer.load(videoFrames);
+                    videoPlayer.open(videoFrames);
                     videoPlayer.reset();
                     slider.reset(videoFrames);
                 }

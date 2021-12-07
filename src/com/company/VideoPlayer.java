@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-class VideoPlayer extends AbstractPlayer implements Runnable, ChangeListener {
+class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, ChangeListener {
     private final Queue<Integer> messageQueue = new ConcurrentLinkedQueue<>();
     private final Slider slider;
     private final JLabel canvas;
@@ -30,9 +30,15 @@ class VideoPlayer extends AbstractPlayer implements Runnable, ChangeListener {
         }
     }
 
-    public void load(ArrayList<File> videoFrames) {
-        this.videoFrames = videoFrames;
+    @Override
+    void open(ArrayList<File> mediaSource) {
+        videoFrames = mediaSource;
         slider.reset(videoFrames);
+    }
+
+    @Override
+    void close() {
+
     }
 
     public void reset() {
