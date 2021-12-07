@@ -1,30 +1,27 @@
 package com.company;
 
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-class VideoPlayer extends AbstractPlayer implements Runnable {
+class VideoPlayer extends AbstractPlayer implements Runnable, ChangeListener {
     private final Queue<Integer> messageQueue = new ConcurrentLinkedQueue<>();
-    private final Slider frameManager;
-    private final JLabel videoCanvas;
+    private final Slider slider;
+    private final JLabel canvas;
     private ArrayList<File> videoFrames;
 
     private Thread playbackThread;
 
     public VideoPlayer(Slider slider, JLabel canvas) {
         currentState = State.Stopped;
-        videoCanvas = canvas;
-        frameManager = slider;
-        frameManager.addChangeListener(e -> {
-            if (canvas != null) {
-                BufferedImage newImage = ImageReader.getInstance().BImgFromFile(videoFrames.get(slider.getValue()));
-                canvas.setIcon(new ImageIcon(newImage));
-            }
-        });
+        this.canvas = canvas;
+        this.slider = slider;
+        this.slider.addChangeListener(this);
     }
 
     public void addMessage(int frameDuration) {
@@ -35,7 +32,7 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
 
     public void load(ArrayList<File> videoFrames) {
         this.videoFrames = videoFrames;
-        frameManager.reset(videoFrames);
+        slider.reset(videoFrames);
     }
 
     public void reset() {
@@ -53,11 +50,22 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
     }
 
     @Override
+    protected void peek(long frameIndex) {
+        if (canvas != null) {
+            BufferedImage newImage = ImageReader.getInstance().BImgFromFile(videoFrames.get((int) frameIndex));
+            canvas.setIcon(new ImageIcon(newImage));
+        }
+        if (slider != null && slider.getValue() != frameIndex) {
+            slider.setValue((int) frameIndex);
+        }
+    }
+
+    @Override
     public void play() {
         if (currentState != State.Playing) {
             currentState = State.Playing;
             synchronized (messageQueue) {
-                messageQueue.offer(16);     // hard-coded approximately 60fps
+                messageQueue.offer(33);     // hard-coded approximately 30fps
                 messageQueue.notify();
             }
             notifyStateChanged();
@@ -90,8 +98,9 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
                 if (!messageQueue.isEmpty()) {
                     // message is the waiting time for next frame
                     int frameDuration = messageQueue.poll();
-                    frameManager.forward();
-                    if (frameManager.getValue() < frameManager.getMaximum()) {
+                    if (slider.getValue() < slider.getMaximum()) {
+                        slider.forward();
+                        // peek(slider.getValue() + 1);
                         if (currentState == State.Playing) {
                             messageQueue.offer(frameDuration);
                             try {
@@ -117,5 +126,13 @@ class VideoPlayer extends AbstractPlayer implements Runnable {
         }
 
         System.out.println("Video Playback Thread : exits");
+    }
+
+    @Override
+    public void stateChanged(ChangeEvent e) {
+        if (canvas != null) {
+            BufferedImage newImage = ImageReader.getInstance().BImgFromFile(videoFrames.get(slider.getValue()));
+            canvas.setIcon(new ImageIcon(newImage));
+        }
     }
 }

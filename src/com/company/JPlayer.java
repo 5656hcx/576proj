@@ -25,7 +25,7 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
         JLabel status = new JLabel("Playlist is empty", JLabel.CENTER);
         slider = new Slider(status, "Now playing the %dth frame");
 
-        audioPlayer = new WavePlayer();
+        audioPlayer = new WavePlayer(slider);
         audioPlayer.setPlaybackStateChange(this);
         videoPlayer = new VideoPlayer(slider, video);
         videoPlayer.setPlaybackStateChange(this);
@@ -37,7 +37,8 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
                 ImageReader reader = ImageReader.getInstance();
                 videoFrames = reader.FolderConfig(path);
                 if (!videoFrames.isEmpty()) {
-                    audioPlayer.load(path);
+                    audioPlayer.open(path);
+                    audioPlayer.setVideoFrameCount(videoFrames.size());
                     video.setText(null);
                     video.setIcon(new ImageIcon(reader.BImgFromFile(videoFrames.get(0))));
                     videoPlayer.load(videoFrames);
