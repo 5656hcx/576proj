@@ -22,12 +22,14 @@ public class WavePlayer extends AbstractPlayer<String> {
         }
     }
 
+    @Override
     public void open(String mediaSource) {
         ImageReader reader = ImageReader.getInstance();
         inputStream = reader.BWavFromFile(mediaSource);
         reset();
     }
 
+    @Override
     public void close() {
         if (audioClip != null && audioClip.isOpen()) {
             audioClip.stop();

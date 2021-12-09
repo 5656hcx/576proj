@@ -93,8 +93,9 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
         JFrame frame = new JFrame("Media Player");
         frame.add(new JPlayer());
         frame.setSize(360, 440);
-        frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLocationRelativeTo(null);
+        frame.setAlwaysOnTop(true);
         frame.setResizable(false);
         frame.setVisible(true);
     }

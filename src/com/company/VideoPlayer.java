@@ -103,9 +103,9 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
                     int frameDuration = messageQueue.poll();
                     if (slider.getValue() < slider.getMaximum()) {
                         if (currentState == State.Playing) {
-                            slider.forward();
                             try {
                                 messageQueue.wait(frameDuration);
+                                slider.forward();
                                 if (currentState == State.Playing) {
                                     messageQueue.offer(frameDuration);
                                 }
