@@ -1,16 +1,11 @@
 package com.company;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
-class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, ChangeListener {
-    private final Queue<Integer> messageQueue = new ConcurrentLinkedQueue<>();
+class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable {
     private final Slider slider;
     private final JLabel canvas;
     private ArrayList<File> videoFrames;
@@ -21,16 +16,12 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
     int elapsedTimeReference = 0;   // target display time for every frame, regardless of I/O time or something
     int frameDurationOffset = 0;    // average offset between ideal and actual time to display a frame in target FPS
 
-    /* DEBUG ONLY PARAMETERS */
-    int fakeFrameIndex = 0;
-
     private Thread playbackThread;
 
     public VideoPlayer(Slider slider, JLabel canvas) {
         currentState = State.Stopped;
         this.canvas = canvas;
         this.slider = slider;
-        this.slider.addChangeListener(this);
     }
 
     private void setAndNotifyStateChanged(State newState) {
@@ -63,7 +54,7 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
             elapsedTimeStandard = 0;
             elapsedTimeReference = 0;
 
-            fakeFrameIndex = 0;
+            slider.setValue(0);
         }
         if (playbackThread == null) {
              playbackThread = new Thread(this);
@@ -114,10 +105,10 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
         // to DEBUG, call stop() to exit the thread
         while (currentState != State.Stopped) {
             synchronized (VideoPlayer.this) {
-                int standard = getFrameDurationBiased(fakeFrameIndex);
+                int standard = getFrameDurationBiased(slider.getValue());
                 int cali = 0;
                 if (lastSyncTime > 0) {
-                    BufferedImage newImage = ImageReader.getInstance().BImgFromFile(videoFrames.get(fakeFrameIndex));
+                    BufferedImage newImage = ImageReader.getInstance().BImgFromFile(videoFrames.get(slider.getValue()));
                     canvas.setIcon(new ImageIcon(newImage));
                     long now = System.currentTimeMillis();
                     long actual = now - lastSyncTime;   // 上一帧的实际展示时长
@@ -125,18 +116,18 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
 
                     elapsedTimeActual += actual;
                     elapsedTimeReference += standard;
-                    elapsedTimeStandard += getFrameDurationStandard(fakeFrameIndex);
-                    fakeFrameIndex += 1;                         // i变成下一帧的序号
-                    frameDurationOffset = (int)(elapsedTimeActual - elapsedTimeReference) / fakeFrameIndex; // 实际值与睡眠值的差值，由此可见系统的响应速率
+                    elapsedTimeStandard += getFrameDurationStandard(slider.getValue());
+                    slider.forward();                        // i变成下一帧的序号
+                    frameDurationOffset = (int)(elapsedTimeActual - elapsedTimeReference) / slider.getValue(); // 实际值与睡眠值的差值，由此可见系统的响应速率
                     cali = (int)(elapsedTimeActual - elapsedTimeStandard);       // 实际值与标准值的差值，由此可见视频播放的相对快慢
 
                     if (standard - cali < 0) {
                         // 上一帧展示完后，延迟已经超过一帧，丢弃当前帧。（相当于当前帧已经完整展示一个标准周期）
                         // 为下一帧重置参数
                         cali = standard;
-                        System.out.printf("DELAYED! SKIP CURRENT FRAME: %d\n", fakeFrameIndex);
+                        System.out.printf("DELAYED! SKIP CURRENT FRAME: %d\n", slider.getValue());
                     }
-                    else System.out.printf("Average FPS: %f, Accumulate Diff: %dms\n", (float) elapsedTimeActual / fakeFrameIndex, cali);
+                    else System.out.printf("Average DPF: %f, Accumulated Delay: %dms\n", (float) elapsedTimeActual / slider.getValue(), cali);
                 }
                 else lastSyncTime = System.currentTimeMillis();
                 try {
@@ -144,7 +135,9 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
                         wait();
                     }
                     else if (currentState == State.Playing) {
-                        wait(standard - cali);
+                        if (standard - cali > 0) {
+                            wait(standard - cali);
+                        }
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -155,24 +148,11 @@ class VideoPlayer extends AbstractPlayer<ArrayList<File>> implements Runnable, C
         System.out.println("Video Playback Thread : exits");
     }
 
-    @Override
-    public void stateChanged(ChangeEvent e) {
-        if (canvas != null) {
-            BufferedImage newImage = ImageReader.getInstance().BImgFromFile(videoFrames.get(slider.getValue()));
-            canvas.setIcon(new ImageIcon(newImage));
-        }
-    }
-
     private int getFrameDurationBiased(int frameIndex) {
         return ((frameIndex % 3 == 1) ? 34 : 33) - frameDurationOffset;
     }
 
     private int getFrameDurationStandard(int frameIndex) {
         return (frameIndex % 3 == 1) ? 34 : 33;
-    }
-
-    @Override
-    long getCurrentFrameIndex() {
-        return fakeFrameIndex;
     }
 }

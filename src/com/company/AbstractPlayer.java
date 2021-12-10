@@ -15,10 +15,6 @@ public abstract class AbstractPlayer<T>  {
     abstract void reset();  // use this function to restore runtime variables
     abstract void peek(long frameIndex);   // relocate current frame to frameIndex
 
-    long getCurrentFrameIndex() {
-        return 0;
-    }
-
     final void setPlaybackStateChange(PlaybackStateChangeListener listener) {
         this.listener = listener;
     }

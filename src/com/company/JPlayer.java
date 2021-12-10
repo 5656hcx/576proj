@@ -54,7 +54,7 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
                 case Paused -> {
                     // tell playback thread to resume
                     videoPlayer.play();
-                    audioPlayer.peek(videoPlayer.fakeFrameIndex);
+                    audioPlayer.peek(slider.getValue());
                     audioPlayer.play();
                 }
                 case Playing -> {
