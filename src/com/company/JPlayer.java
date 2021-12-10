@@ -42,7 +42,6 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
                     video.setText(null);
                     video.setIcon(new ImageIcon(reader.BImgFromFile(videoFrames.get(0))));
                     videoPlayer.open(videoFrames);
-                    videoPlayer.reset();
                     slider.reset(videoFrames);
                 }
             }
@@ -54,13 +53,14 @@ public class JPlayer extends JPanel implements AbstractPlayer.PlaybackStateChang
             switch (videoPlayer.currentState) {
                 case Paused -> {
                     // tell playback thread to resume
-                    audioPlayer.play();
                     videoPlayer.play();
+                    audioPlayer.peek(videoPlayer.fakeFrameIndex);
+                    audioPlayer.play();
                 }
                 case Playing -> {
                     // tell playback thread to pause
-                    audioPlayer.pause();
                     videoPlayer.pause();
+                    audioPlayer.pause();
                 }
             }
         });
